@@ -19,6 +19,9 @@ var ErrAccountNotFound = errors.New("Account not found")
 // ErrNotEnoughBalance ...
 var ErrNotEnoughBalance = errors.New("Not enough balance")
 
+// ErrPaymentNotFound ....
+var ErrPaymentNotFound = errors.New("Payment not found")
+
 // Service ....
 type Service struct {
 	nextAccountID int64
@@ -110,13 +113,42 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 	s.payments = append(s.payments, payment)
 	return payment, nil
 }
+
 // FindAccountByID ....
-func (s *Service) FindAccountByID(accountID int64) (*types.Account, error){
+func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 	for _, account := range s.accounts {
 		if account.ID == accountID {
-			return account, nil			
+			return account, nil
 		}
 		break
 	}
 	return nil, ErrAccountNotFound
+}
+
+// FindPaymentByID ....
+func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
+	for _, payment := range s.payments {
+		if payment.ID == paymentID {
+			return payment, nil
+		}
+		break
+	}
+	return nil, ErrPaymentNotFound
+}
+
+// Reject ...
+func (s *Service) Reject(paymentID string) (*types.Payment, error) {
+	findPayment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil, ErrPaymentNotFound
+	}
+	findPayment.Status = types.PaymentStatusFail
+	findAccount, err := s.FindAccountByID(findPayment.AccountID)
+	if err != nil {
+		return nil, ErrAccountNotFound
+	}
+	findAccount.Balance += findPayment.Amount
+
+	return findPayment, nil
+
 }

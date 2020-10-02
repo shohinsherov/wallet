@@ -24,7 +24,7 @@ func TestSerivce_FindAccountByID_notfound(t *testing.T) {
 	svc := &Service{}
 	svc.RegisterAccount("+992000000001")
 
-	account, err := svc.FindAccountByID(2)
+	account, err := svc.FindAccountByID(1)
 
 	fmt.Println(account)
 	fmt.Println(err)
@@ -34,3 +34,4 @@ func TestSerivce_FindAccountByID_notfound(t *testing.T) {
 	// Account not found	
 	
 }
+
