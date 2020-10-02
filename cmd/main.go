@@ -23,12 +23,12 @@ func main() {
 	fmt.Println(payment)
 	fmt.Println(account)
 
-	rejact, err := svc.Reject(payment.ID)
-	if err != nil {
-		fmt.Println(err)
+	errR := svc.Reject(payment.ID)
+	if errR != nil {
+		fmt.Println(errR)
 		return
 	}
-	fmt.Println(rejact)
+	
 	fmt.Println(account)
 
 	/*err = svc.Deposit(account.ID, 10)
