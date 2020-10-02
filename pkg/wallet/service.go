@@ -137,18 +137,18 @@ func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 }
 
 // Reject ...
-func (s *Service) Reject(paymentID string) (*types.Payment, error) {
+func (s *Service) Reject(paymentID string) error {
 	findPayment, err := s.FindPaymentByID(paymentID)
 	if err != nil {
-		return nil, ErrPaymentNotFound
+		return ErrPaymentNotFound
 	}
 	findPayment.Status = types.PaymentStatusFail
 	findAccount, err := s.FindAccountByID(findPayment.AccountID)
 	if err != nil {
-		return nil, ErrAccountNotFound
+		return ErrAccountNotFound
 	}
 	findAccount.Balance += findPayment.Amount
 
-	return findPayment, nil
+	return nil
 
 }
