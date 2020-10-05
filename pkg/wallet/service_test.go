@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -23,6 +24,32 @@ type testAccount struct {
 
 func newTestService() *testService {
 	return &testService{Service: &Service{}}
+}
+
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error){
+	//регистрируем аккаунт 
+	account, err := s.RegisterAccount(data.phone)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
+	}
+
+	// пополняем счет 
+	err = s.Deposit(account.ID, data.balance)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
+	}
+
+	//выполняем платежи 
+	payments := make([]*types.Payment, len(data.payments))
+	for i, payment := range data.payments {
+		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't make payment, error = %v", err)
+		}
+	}
+
+	return account, payments, nil
+	
 }
 
 var defaultTestAccount = testAccount{
