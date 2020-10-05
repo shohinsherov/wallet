@@ -26,20 +26,20 @@ func newTestService() *testService {
 	return &testService{Service: &Service{}}
 }
 
-func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error){
-	//регистрируем аккаунт 
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error) {
+	//регистрируем аккаунт
 	account, err := s.RegisterAccount(data.phone)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
 	}
 
-	// пополняем счет 
+	// пополняем счет
 	err = s.Deposit(account.ID, data.balance)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
 	}
 
-	//выполняем платежи 
+	//выполняем платежи
 	payments := make([]*types.Payment, len(data.payments))
 	for i, payment := range data.payments {
 		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
@@ -49,7 +49,7 @@ func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Pay
 	}
 
 	return account, payments, nil
-	
+
 }
 
 var defaultTestAccount = testAccount{
@@ -177,4 +177,48 @@ func TestService_addAccount_fail(t *testing.T) {
 		return
 	}
 
+}
+
+func TestService_PayFromFavorite_OK(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	payment := payments[0]
+	favorite, err := s.FavoritePayment(payment.ID, "First")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = s.PayFromFavorite(favorite.ID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func TestService_FavoritePayment_OK(t *testing.T) {
+	s := newTestService()
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "First")
+	if err == nil {		
+		return
+	}
+
+}
+
+func TestService_FindFavoriteByID_FAIL(t *testing.T) {
+	s := newTestService()
+	_, err := s.FindFavoriteByID("asdasd")
+	if err == nil {
+		t.Errorf("Favorite not found %v", err)
+		return
+	}
 }
