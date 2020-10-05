@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"fmt"
 	"errors"
 
 	"github.com/google/uuid"
@@ -28,7 +29,49 @@ type Service struct {
 	accounts      []*types.Account
 	payments      []*types.Payment
 }
+//// ---------------------------------------------------
+type testService struct {
+	*Service
+}
 
+type testAccount struct {
+	phone types.Phone
+	balance types.Money
+	payments []struct {
+		amount types.Money
+		category types.PaymentCategory
+	}
+}
+func newTestService() *testService{
+	return &testService{Service: &Service{}}
+}
+
+func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error){
+	//регистрируем аккаунт 
+	account, err := s.RegisterAccount(data.phone)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't register account, error = %v", err)
+	}
+
+	// пополняем счет 
+	err = s.Deposit(account.ID, data.balance)
+	if err != nil {
+		return nil, nil, fmt.Errorf("can't deposity account, error = %v", err)
+	}
+
+	//выполняем платежи 
+	payments := make([]*types.Payment, len(data.payments))
+	for i, payment := range data.payments {
+		payments[i], err = s.Pay(account.ID, payment.amount, payment.category)
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't make payment, error = %v", err)
+		}
+	}
+
+	return account, payments, nil
+	
+}
+//////////////-------------------------------------------
 // Error ....
 type Error string
 
@@ -140,15 +183,27 @@ func (s *Service) FindPaymentByID(paymentID string) (*types.Payment, error) {
 func (s *Service) Reject(paymentID string) error {
 	findPayment, err := s.FindPaymentByID(paymentID)
 	if err != nil {
-		return ErrPaymentNotFound
+		return err
 	}
 	findPayment.Status = types.PaymentStatusFail
 	findAccount, err := s.FindAccountByID(findPayment.AccountID)
 	if err != nil {
-		return ErrAccountNotFound
+		return err
 	}
 	findAccount.Balance += findPayment.Amount
 
 	return nil
 
+}
+
+func (s *Service) Repeat(paymentID string) (*types.Payment, error) {
+	findPayment, err := s.FindPaymentByID(paymentID)
+	if err != nil {
+		return nil, err
+	}
+	newPayment, err := s.Pay(findPayment.AccountID, findPayment.Amount, findPayment.Category)
+	if err != nil {
+		return nil, err
+	}
+	return newPayment, nil
 }
