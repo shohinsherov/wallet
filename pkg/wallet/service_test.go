@@ -8,6 +8,23 @@ import (
 	"github.com/shohinsherov/wallet/pkg/types"
 )
 
+type testService struct {
+	*Service
+}
+
+type testAccount struct {
+	phone    types.Phone
+	balance  types.Money
+	payments []struct {
+		amount   types.Money
+		category types.PaymentCategory
+	}
+}
+
+func newTestService() *testService {
+	return &testService{Service: &Service{}}
+}
+
 var defaultTestAccount = testAccount{
 	phone:   "+992000000001",
 	balance: 10_000_00,

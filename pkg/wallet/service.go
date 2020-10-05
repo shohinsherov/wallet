@@ -30,21 +30,7 @@ type Service struct {
 	payments      []*types.Payment
 }
 //// ---------------------------------------------------
-type testService struct {
-	*Service
-}
 
-type testAccount struct {
-	phone types.Phone
-	balance types.Money
-	payments []struct {
-		amount types.Money
-		category types.PaymentCategory
-	}
-}
-func newTestService() *testService{
-	return &testService{Service: &Service{}}
-}
 
 func (s *testService) addAccount(data testAccount) (*types.Account, []*types.Payment, error){
 	//регистрируем аккаунт 
