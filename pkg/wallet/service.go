@@ -2,6 +2,11 @@ package wallet
 
 import (
 	"errors"
+	"io"
+	"log"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/shohinsherov/wallet/pkg/types"
@@ -210,4 +215,117 @@ func (s *Service) PayFromFavorite(favoriteID string) (*types.Payment, error) {
 	}
 
 	return payFavorite, nil
+}
+
+func (s *Service) ExportToFile(path string) error {
+	file, err := os.Create(path)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	for _, acc := range s.accounts {
+		_, err = file.Write([]byte(strconv.FormatInt(int64(acc.ID), 10)))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+
+		defer func() {
+			if cerr := file.Close(); cerr != nil {
+				log.Print(err)
+				//return cerr
+			}
+		}()
+		_, err = file.Write([]byte(string(";")))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		_, err = file.Write([]byte(string(acc.Phone)))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		_, err = file.Write([]byte(string(";")))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		_, err = file.Write([]byte(strconv.FormatInt(int64(acc.Balance), 10)))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		_, err = file.Write([]byte(string("|")))
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) ImportFromFile(path string) error {
+	file, err := os.Open(path)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	defer func() {
+		oerr := file.Close()
+		if oerr != nil {
+			log.Print(oerr)
+		}
+	}()
+
+	text := make([]byte, 0)
+	buf := make([]byte, 4)
+	for {
+		read, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		text = append(text, buf[:read]...)
+	}
+
+	accounts := strings.Split(string(text), "|")
+	accounts = accounts[:len(accounts)-1]
+
+	for _, acc := range accounts {
+		values := strings.Split(acc, ";")
+
+		id, err := strconv.ParseInt(values[0], 10, 64)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+
+		phone := values[1]
+
+		balance, err := strconv.ParseInt(values[2], 10, 64)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+		account := &types.Account{
+			ID:      id,
+			Phone:   types.Phone(phone),
+			Balance: types.Money(balance),
+		}
+
+		s.accounts = append(s.accounts, account)
+	}
+
+	for _, ac := range accounts {
+		log.Print(ac)
+	}
+	return nil
+
 }
