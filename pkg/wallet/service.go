@@ -323,9 +323,6 @@ func (s *Service) ImportFromFile(path string) error {
 		s.accounts = append(s.accounts, account)
 	}
 
-	for _, ac := range accounts {
-		log.Print(ac)
-	}
 	return nil
 
 }
