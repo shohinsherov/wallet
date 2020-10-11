@@ -131,7 +131,7 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 		if account.ID == accountID {
 			return account, nil
 		}
-		break
+
 	}
 	return nil, ErrAccountNotFound
 }
@@ -314,13 +314,13 @@ func (s *Service) ImportFromFile(path string) error {
 			log.Print(err)
 			return err
 		}
-		account := &types.Account{
+
+		s.accounts = append(s.accounts, &types.Account{
 			ID:      id,
 			Phone:   types.Phone(phone),
 			Balance: types.Money(balance),
-		}
+		})
 
-		s.accounts = append(s.accounts, account)
 	}
 
 	return nil

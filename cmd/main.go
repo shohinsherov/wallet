@@ -1,10 +1,10 @@
 package main
 
 import (
-//	"io"
-//	"log"
-//	"os"
-//	"strings"
+	//	"io"
+	"log"
+	//	"os"
+	//	"strings"
 	//"fmt"
 	"github.com/shohinsherov/wallet/pkg/wallet"
 )
@@ -13,6 +13,13 @@ func main() {
 	svc := &wallet.Service{}
 
 	svc.ImportFromFile("data/test1.txt")
+
+	acc, err := svc.FindAccountByID(2)
+	if err != nil {
+		log.Print(err)
+	}
+
+	log.Print(acc)
 	/*_, err := svc.RegisterAccount("+992000000001")
 	if err != nil {
 		log.Print(err)
@@ -49,13 +56,13 @@ func main() {
 			log.Print(err)
 			return
 		}
-		text = append(text, buf[:read]...)		
+		text = append(text, buf[:read]...)
 	}
-		
+
 		log.Print(text)
 		d := string(text)
 		log.Print(d)
-		accounts := strings.Split(string(text), "|")		
+		accounts := strings.Split(string(text), "|")
 		log.Print(accounts)
 
 		accounts = accounts[:len(accounts)-1]
