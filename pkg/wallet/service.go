@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"bufio"
+	"sync"
 
 	//"io/ioutil"
 	"errors"
@@ -139,6 +140,7 @@ func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
 			return account, nil
 		}
 	}
+	log.Print(ErrAccountNotFound)
 	return nil, ErrAccountNotFound
 }
 
@@ -663,4 +665,181 @@ func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records i
 	}
 
 	return nil
+}
+
+//    Lesson 18 ---------------------------------
+
+// SumPayments ....
+func (s *Service) SumPayments(goroutines int) types.Money {
+
+	wg := sync.WaitGroup{}
+	//	wg.Add(goroutines) // сколько горутин ждём
+
+	mu := sync.Mutex{}
+	sum := int64(0)
+
+	if goroutines <= 1 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done() // сообщаем, что закончили
+			val := int64(0)
+
+			for _, payment := range s.payments {
+				val += int64(payment.Amount)
+			}
+			mu.Lock()
+			defer mu.Unlock()
+			sum += val
+		}()
+	} else {
+		n := (len(s.payments) / goroutines)
+
+		for i := 0; i < goroutines-1; i++ {
+			pVal := int64(0)
+			wg.Add(1)
+			go func(val int) {
+				defer wg.Done()
+				for j := n * val; j < n*(val+1); j++ {
+					pVal += int64(s.payments[j].Amount)
+				}
+				log.Print(pVal)
+				mu.Lock()
+				defer mu.Unlock()
+				sum += pVal
+			}(i)
+		}
+		pVal := int64(0)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := n * (goroutines - 1); j < len(s.payments); j++ {
+				pVal += int64(s.payments[j].Amount)
+			}
+			log.Print(pVal)
+			mu.Lock()
+			defer mu.Unlock()
+			sum += pVal
+		}()
+	}
+
+	wg.Wait() // ждём завершения всех горутин
+
+	return types.Money(sum)
+}
+
+// FilterPayments ...
+func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payment, error) {
+
+	acc, _ := s.FindAccountByID(accountID)
+	if acc == nil {
+		return nil, ErrAccountNotFound
+	}
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
+	payment := []types.Payment{}
+
+	if goroutines <= 1 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, pay := range s.payments {
+				if pay.AccountID == accountID {
+					payment = append(payment, *pay)
+				}
+			}
+		}()
+	} else {
+		n := len(s.payments) / goroutines
+
+		for i := 0; i < goroutines-1; i++ {
+
+			wg.Add(1)
+			go func(val int) {
+				defer wg.Done()
+				for j := n * val; j < n*(val+1); j++ {
+					if s.payments[j].AccountID == accountID {
+						mu.Lock()
+						payment = append(payment, *s.payments[j])
+						mu.Unlock()
+					}
+				}
+			}(i)
+		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for j := n * (goroutines - 1); j < len(s.payments); j++ {
+				if s.payments[j].AccountID == accountID {
+					mu.Lock()
+					payment = append(payment, *s.payments[j])
+					mu.Unlock()
+				}
+			}
+		}()
+
+	}
+
+	wg.Wait()
+
+	return payment, nil
+}
+
+// FilterPaymentsByFn ...
+func (s *Service) FilterPaymentsByFn(filter func(payment types.Payment) bool, goroutines int) ([]types.Payment, error) {
+
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+
+	payment := []types.Payment{}
+	if goroutines <= 1 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, pay := range s.payments {
+				if filter(*pay) {
+					mu.Lock()
+					payment = append(payment, *pay)
+					mu.Unlock()
+				}
+			}
+		}()
+	} else {
+		n := len(s.payments) / goroutines
+
+		for i := 0; i < goroutines-1; i++ {
+
+			wg.Add(1)
+			go func(val int) {
+				defer wg.Done()
+				for j := n * val; j < n*(val+1); j++ {
+					if filter(*s.payments[j]) {
+						mu.Lock()
+						payment = append(payment, *s.payments[j])
+						mu.Unlock()
+					}
+				}
+			}(i)
+		}
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for j := n * (goroutines - 1); j < len(s.payments); j++ {
+				if filter(*s.payments[j]) {
+					mu.Lock()
+					payment = append(payment, *s.payments[j])
+					mu.Unlock()
+				}
+			}
+		}()
+
+	}
+
+	wg.Wait()
+	return payment, nil
 }

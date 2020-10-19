@@ -208,7 +208,7 @@ func TestService_FavoritePayment_OK(t *testing.T) {
 	}
 	payment := payments[0]
 	_, err = s.FavoritePayment(payment.ID, "First")
-	if err == nil {		
+	if err == nil {
 		return
 	}
 
@@ -220,5 +220,142 @@ func TestService_FindFavoriteByID_FAIL(t *testing.T) {
 	if err == nil {
 		t.Errorf("Favorite not found %v", err)
 		return
+	}
+}
+
+func TestService_ExportToFile(t *testing.T) {
+	s := newTestService()
+	err := s.ExportToFile("dump.txt")
+
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+}
+
+func TestService_ImportFromFile(t *testing.T) {
+	s := newTestService()
+	s.RegisterAccount("321")
+	s.ExportToFile("dump.txt")
+
+	err := s.ImportFromFile("dump.txt")
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+}
+
+func TestSerive_Export(t *testing.T) {
+	s := newTestService()
+
+	s.RegisterAccount("123")
+	s.Deposit(1, 12345)
+	pay, _ := s.Pay(1, 100, "1")
+	s.FavoritePayment(pay.ID, "beha")
+	err := s.Export("test")
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+
+}
+
+func TestService_Import(t *testing.T) {
+	s := newTestService()
+
+	s.RegisterAccount("123")
+	s.Deposit(1, 12345)
+	pay, _ := s.Pay(1, 100, "1")
+	s.FavoritePayment(pay.ID, "beha")
+	s.Export("test")
+
+	err := s.Import("test")
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+}
+
+func BenchmarkSumPayments(b *testing.B) {
+	s := newTestService()
+
+	s.RegisterAccount("001")
+	s.Deposit(1, 1000)
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+
+	want := types.Money(40)
+
+	for i := 0; i < b.N; i++ {
+		result := s.SumPayments(3)
+		if result != want {
+			b.Fatalf("Invalid result, got %v, want %v", result, want)
+		}
+	}
+
+}
+
+func BenchmarkFilterPayments_one(b *testing.B) {
+	s := newTestService()
+
+	s.RegisterAccount("0001")
+	s.Deposit(1, 1000)
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "2")
+	s.Pay(1, 10, "3")
+	s.Pay(1, 10, "4")
+	s.Pay(1, 10, "5")
+	for i := 0; i < b.N; i++ {
+		p, err := s.FilterPayments(1, 1)
+		if err != nil {
+			b.Fatalf("Error %v", err)
+		}
+		if len(p) != 5 {
+			b.Fatalf("Error %v,", p)
+		}
+	}
+}
+func BenchmarkFilterPayments_multiply(b *testing.B) {
+	s := newTestService()
+
+	s.RegisterAccount("0001")
+	s.Deposit(1, 1000)
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "2")
+	s.Pay(1, 10, "3")
+	s.Pay(1, 10, "4")
+	s.Pay(1, 10, "5")
+	for i := 0; i < b.N; i++ {
+		p, err := s.FilterPayments(1, 3)
+		if err != nil {
+			b.Fatalf("Error %v", err)
+		}
+		if len(p) != 5 {
+			b.Fatalf("Error %v,", p)
+		}
+	}
+}
+
+func BenchmarkFilterPaymentsByFn(b *testing.B) {
+	s := newTestService()
+
+	s.RegisterAccount("0001")
+	s.Deposit(1, 1000)
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	s.Pay(1, 10, "1")
+	for i := 0; i < b.N; i++ {
+		p, err := s.FilterPaymentsByFn(func(payment types.Payment) bool {
+			if payment.AccountID == 1 {
+				return true
+			}
+			return false
+		}, 3)
+		if err != nil {
+			b.Fatalf("Error %v", err)
+		}
+		if len(p) != 5 {
+			b.Fatalf("Error %v,", p)
+		}
 	}
 }
